@@ -209,4 +209,109 @@ Deploy to container  用于把打包的应用发布到远程服务器
 * 查看公钥文件，复制内容添加至SSH Server服务器~/.ssh/authorized_keys文件中,这个地方是把jenkins服务器公钥要添加至你构建目标服务器的authorized_keys里
 
 
+* authorized_keys是什么呢？
 
+      我们需要本地机器ssh访问远程服务器时为了减少输入密码的步骤，基本上都会在本地机器生成ssh公钥，
+      然后将本地ssh公钥复制到远程服务器的.ssh/authorized_keys中，这样就可以免密登录了。（ 服务器之间访问同理）
+      查看秘钥文件，复制内容至 Key 选项输入框
+      如果在添加ssh秘钥文件时设置了密码也需要配置Passphrase、Path to key选项
+      设置SSH Server服务器Name、Hostname、Username、Remote Directory
+      设置完成后点击：Test Configuration按钮，出现：Success表示设置成功
+      
+ * 接下来去任务的配置修改我们的构建参数：
+
+![image](https://user-images.githubusercontent.com/50992676/122525606-fcf56f80-d04b-11eb-9b23-682d13cdd8ac.png)
+
+![image](https://user-images.githubusercontent.com/50992676/122525661-0bdc2200-d04c-11eb-85a0-deff8a6284ad.png)
+
+        
+    Name是我们之前在系统配置里服务器，自动带入的
+
+    Source files     项目构建后的目录 dist/** 匹配的是dist下所有文件包括文件夹
+
+    Remove prefix    去前缀 这里不填写的话 构建后扔过去的就是包含dist的完整文件夹
+
+    Remote directoty  测试发布的目录 
+
+    Exec command     发布完执行的命令
+   
+   
+ * 保存以后，我们再次构建项目
+
+![image](https://user-images.githubusercontent.com/50992676/122525850-3e861a80-d04c-11eb-8e33-412189e77ac6.png)
+
+
+* 输出成功以后，我们登陆目标服务器去查看下
+
+![image](https://user-images.githubusercontent.com/50992676/122525903-4b0a7300-d04c-11eb-91ed-031ac6fa2f7e.png)
+
+
+        可以看到我们的代码成功构建到了这里。至此构建代码至其他服务器的一个流程也完成了。
+        现在我们每次提交代码至规定的分支，都会自动触发构建至我们的类似测试环境或者开发联调环境。
+        接下来就要配合nginx配合完成我们前端项目的部署了。
+
+
+# Nginx部署前端项目
+
+* Nginx 是一个高性能的HTTP和反向代理web服务器,何为反响代理，作为前端开发的同学还是有必要了解一下:
+
+
+![image](https://user-images.githubusercontent.com/50992676/122526366-ca984200-d04c-11eb-847a-c489ad12a496.png)
+
+
+
+在客户端配置代理服务器，通过代理服务器进行互联网访问。代理对象是客户端，不知道服务端是谁。我们举个最直接的正向代理的例子，比如我们要访问国外的网站，速度很慢，甚至访问不到，这个时候我们就需要翻墙，使用vpn正向代理。并且vpn是在我们的用户端设置的(并不是在远端的服务器设置)。浏览器先访问vpn地址，vpn地址转发请求，并最后将请求结果原路返回来。
+
+
+![image](https://user-images.githubusercontent.com/50992676/122526381-cd933280-d04c-11eb-8767-144c85f47ac7.png)
+
+
+
+客户端不需要任何配置就能访问，只需要将请求发送到反向代理服务器，由反向代理服务器去选择目标服务器，获取数据后在返回给客户端。对外就一个服务器，暴露的是反向代理服务器地址，隐藏了真实服务器IP地址。代理对象是服务端，不知道客户端是谁。反向代理是作用在服务器端的，是一个虚拟ip(VIP)。对于用户的一个请求，会转发到多个后端处理器中的一台来处理该具体请求。
+
+
+### 1.nginx的配置文件目录
+
+![image](https://user-images.githubusercontent.com/50992676/122526431-ddab1200-d04c-11eb-8ea3-e1f0a2f9e380.png)
+
+
+
+*  /etc/nginx/nginx.conf 核心配置文件
+*  /etc/nginx/conf.d/default.conf 默认http服务器配置文件
+*  /etc/nginx/fastcgi_params fastcgi配置
+*  /etc/nginx/scgi_params scgi配置
+*  /etc/nginx/uwsgi_params uwsgi配置
+*  /etc/nginx/koi-utf
+*  /etc/nginx/koi-win
+*  /etc/nginx/win-utf 这三个文件是编码映射文件，因为作者是俄国人
+*  /etc/nginx/mime.types 设置HTTP协议的Content-Type与扩展名对应关系的文件
+*  /usr/lib/systemd/system/nginx-debug.service
+*  /usr/lib/systemd/system/nginx.service
+*  /etc/sysconfig/nginx
+*  /etc/sysconfig/nginx-debug 这四个文件是用来配置守护进程管理的
+*  /etc/nginx/modules 基本共享库和内核模块
+*  /usr/share/doc/nginx-1.18.0 帮助文档
+*  /usr/share/doc/nginx-1.18.0/COPYRIGHT 版权声明
+*  /usr/share/man/man8/nginx.8.gz 手册
+*  /var/cache/nginx Nginx的缓存目录
+*  /var/log/nginx Nginx的日志目录
+*  /usr/sbin/nginx 可执行命令
+*  /usr/sbin/nginx-debug 调试执行可执行命令
+
+### 2.nginx核心模块
+
+nginx的核心配置文件nginx.conf主要由3个部分组成:
+
+#### 基本配置
+
+```js
+#user  nobody;  #配置worker进程运行用户
+
+worker_processes  1; #配置工作进程数目,根据硬件调整，通常等于CPU数量或者2倍于CPU数量
+
+#error_log  logs/error.log; # 配置全局错误日志及类型
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;  #配置进程pid文件
+```
