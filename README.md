@@ -253,7 +253,7 @@ Deploy to container  用于把打包的应用发布到远程服务器
 
 # Nginx部署前端项目
 
-* Nginx 是一个高性能的HTTP和反向代理web服务器,何为反响代理，作为前端开发的同学还是有必要了解一下:
+* Nginx 是一个高性能的HTTP和反向代理web服务器,何为反向代理，作为前端开发的同学还是有必要了解一下:
 
 
 ![image](https://user-images.githubusercontent.com/50992676/122526366-ca984200-d04c-11eb-847a-c489ad12a496.png)
