@@ -304,14 +304,153 @@ nginx的核心配置文件nginx.conf主要由3个部分组成:
 
 #### 基本配置
 
-```js
-#user  nobody;  #配置worker进程运行用户
+```makefile
+#user  nobody;                  #配置worker进程运行用户
 
-worker_processes  1; #配置工作进程数目,根据硬件调整，通常等于CPU数量或者2倍于CPU数量
+worker_processes  1;            #配置工作进程数目,根据硬件调整，通常等于CPU数量或者2倍于CPU数量
 
-#error_log  logs/error.log; # 配置全局错误日志及类型
+#error_log  logs/error.log;     # 配置全局错误日志及类型
 #error_log  logs/error.log  notice;
 #error_log  logs/error.log  info;
 
-#pid        logs/nginx.pid;  #配置进程pid文件
+#pid        logs/nginx.pid;     #配置进程pid文件
+```
+
+#### events配置
+
+```makefile
+    events {
+
+        # use epoll;  #事件处理模型优化
+
+        worker_connections  1024;  #配置每个worker进程连接数上限，nginx支持的总连接数等于worker_connections*worker_processes
+   }
+```
+
+#### http配置，基本配置
+
+```makefile
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    client_max_body_size 100m;
+
+    sendfile        on;    #开启高效文件传输模式
+    #cp_nopush     on;  #防止网络阻塞
+
+    keepalive_timeout  0;
+    
+    gzip on; //启动
+    gzip_buffers 32 4K;
+    gzip_comp_level 6; //压缩级别，1-10，数字越大压缩的越好
+    gzip_min_length 100; //不压缩临界值，大于100的才压缩，一般不用改
+    gzip_types application/javascript text/css text/xml;
+    gzip_disable "MSIE [1-6]\."; // IE6对Gzip不友好，对Gzip
+    gzip_vary on;
+  }
+```
+- `client_max_body_size`表示 客户端请求服务器最大允许大小,如果请求正文数据大于设定值，HTTP协议会报413错误 `Request Entity Too Large`，如果需要上传大文件是需要修改这个值的。
+  关于这部分具体内容如果有兴趣的可以看这篇[文献](https://www.cnblogs.com/shixinlong/p/13914985.html)
+- `keepalive_timeout` :长连接超时时间，单位是秒,`Nginx `使用 `keepalive_timeout` 来指定 `KeepAlive` 的超时时间（timeout）。指定每个 TCP 连接最多可以保持多长时间。
+  Nginx 的默认值是 75 秒，有些浏览器最多只保持 `60`秒，所以可以设定为 `60` 秒。若将它设置为 0，就禁止了 keepalive 连接。做好这些超时时间的限定，
+  判定超时后资源被释放，用来处理其他的请求，以此提升 `Nginx` 的性能
+  
+- `gzip`:在不设置服务器gzip的情况下，我们访问网站
+
+![image](https://user-images.githubusercontent.com/50992676/122529785-6b3c3100-d050-11eb-9ef6-4ea7923be359.png)
+
+
+设置了gzip后访问情况如下
+
+![image](https://user-images.githubusercontent.com/50992676/122529838-78592000-d050-11eb-912f-f94c5182f1ae.png)
+
+
+- 经过对比，我们发现，设置gzip之后，获取同样的数据。压缩之后的数据量大概是原始数据的1/4。同样的，获取数据的时间也大大降低。极大的优化了用户的体验。
+
+#### Server配置
+
+```makefile
+server {
+        listen       80;   #配置监听端口
+        server_name  localhost;  #配置服务名
+     
+        root /home/test; #root根目录
+        
+        ##默认的匹配斜杠/的请求，当访问路径中有/，会被该localtion匹配到并进行处理
+       location / {
+                try_files $uri $uri/ /index.html;  
+    	  }
+          
+ 	   location /api {  
+        	proxy_pass http:url;  #接口的代理地址
+    	 }
+
+
+        error_page  404  /404.html;
+        #可显示自定义404页面内容，正常返回404状态码
+
+        error_page 404 =  /404.htmml
+        #可显示自定义404页面内容，但返回200状态码。
+     }
+```
+```js
+location / {
+                try_files $uri $uri/ /index.html;  
+    	  }
+```
+
+- 以上这段代码主要是为了解决vue项目history模式下刷新页面出现404的问题，一般我们认为启用history模式只是去掉地址栏的#符号，然后`Nginx`服务器为了实现这个效果需要添加一段代码用于支持该效果，给`Nginx`添加这段代码后，我们可以直接在地址栏输入路由链接，从而进入到对应的路由页面，如果没有使用该段代码，地址栏的#号依旧会消失，但是你无法通过直接输入路由地址直接进入到对应的页面。主要原因是路由的路径资源并不是一个真实的路径，所以无法找到具体的文件因此需要`rewrite`到index.html中，然后交给路由在处理请求资源
+
+
+- `error_page`在一次请求中只能响应一次，对应的`Nginx`有另外一个配置可以控制这个选项：`recursive_error_pages`默认为false，作用是控制error_page能否在一次请求中触发多次。
+####  适配PC与移动环境
+
+
+- 当用户从移动端打开PC端的场景时，将自动跳转指移动端m.anchnet.com，本质上是Nginx可以通过内置变量$http_user_agent，获取到请求客户端的userAgent，从而知道当前用户当前终端是移动端还是PC，进而重定向到H5站还是PC站 
+```makefile
+    server {
+         location / {
+                //移动、pc设备agent获取
+
+                if ($http_user_agent ~* '(Android|webOS|iPhone)') {
+                    set $mobile_request '1';
+                }
+                if ($mobile_request = '1') {
+                    rewrite ^.+ http://m.anchnet.com;
+                }
+            } 
+        }
+```
+#### Nginx配置https
+
+```makefile
+    server {
+       #ssl参数
+       listen              443 ssl; //监听443端口，因为443端口是https的默认端口。80为http的默认端口
+       server_name         example.com;
+       #证书文件
+       ssl_certificate     example.com.crt;
+       #私钥文件
+       ssl_certificate_key example.com.key;
+    }
+```
+
+#### nginx 端口映射多个应用
+
+```makefile
+    server {
+    listen       8000;
+    location / {
+        proxy_pass http://http://65.49.218.66/:9999/;
+        index  index.html index.htm;
+    }
+    location /cdh {
+        proxy_pass http://65.49.218.66/:4690/;
+        index  index.html login.html;
+    }
+    location /tomcat {
+        proxy_pass http://http://65.49.218.66/:8282/;
+        index  index.html index.htm;
+    }
+}
 ```
