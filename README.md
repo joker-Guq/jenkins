@@ -399,7 +399,7 @@ location / {
     	  }
 ```
 
-- 以上这段代码主要是为了解决vue项目history模式下刷新页面出现404的问题，一般我们认为启用history模式只是去掉地址栏的#符号，然后`Nginx`服务器为了实现这个效果需要添加一段代码用于支持该效果，给`Nginx`添加这段代码后，我们可以直接在地址栏输入路由链接，从而进入到对应的路由页面，如果没有使用该段代码，地址栏的#号依旧会消失，但是你无法通过直接输入路由地址直接进入到对应的页面。主要原因是路由的路径资源并不是一个真实的路径，所以无法找到具体的文件因此需要`rewrite`到index.html中，然后交给路由在处理请求资源
+- 以上这段代码主要是为了解决vue项目history模式下刷新页面出现404的问题，目前web开发 使用一般前后端分离技术，并且前端负责路由。为了美观，会采用前端会采用history 模式的路由。但刷新页面时，前端真的会按照假路由去寻找文件。此时，必须返回index（index.html）文件才不至于返回404,如果没有使用该段代码，地址栏的#号依旧会消失，但是你无法通过直接输入路由地址直接进入到对应的页面。主要原因是路由的路径资源并不是一个真实的路径，所以无法找到具体的文件因此需要`rewrite`到index.html中，然后交给路由在处理请求资源,`try_files` 为文件匹配，先找真实的地址($uri)，如果找不到，再找`index.html`文件
 
 
 - `error_page`在一次请求中只能响应一次，对应的`Nginx`有另外一个配置可以控制这个选项：`recursive_error_pages`默认为false，作用是控制error_page能否在一次请求中触发多次。
@@ -436,21 +436,52 @@ location / {
 ```
 
 #### nginx 端口映射多个应用
+- 几个单页应用同时需要部署在同一台电脑上，并且都需要占用80或者443端口,可以采用以下的方式
+
 
 ```makefile
     server {
-    listen       8000;
-    location / {
-        proxy_pass http://http://65.49.218.66/:9999/;
-        index  index.html index.htm;
-    }
-    location /cdh {
-        proxy_pass http://65.49.218.66/:4690/;
-        index  index.html login.html;
-    }
-    location /tomcat {
-        proxy_pass http://http://65.49.218.66/:8282/;
-        index  index.html index.htm;
-    }
-}
+        listen       80;
+        root /root/test;  #web服务器目录；
+        location ^~ /a/{
+          try_files $uri /a/index.html;  #如果找不到文件，就返回 /toot/test/a/index.html
+        }
+        location ^~ /b/{
+         try_files $uri /b/index.html;   #如果找不到文件，就返回 /toot/test/b/index.html
+        }
+       
+   }
 ```
+- 额外拓展一下关于 `Nginx`中几个关于uri的变量
+```makefile
+    在nginx中有几个关于uri的变量,包括$uri $request_uri $document_uri，下面看一下他们的区别 ：
+
+$request_uri: /stat.php?id=1585378&web_id=1585378
+$uri /stat.php
+$document_uri: /stat.php
+
+$args #这个变量等于请求行中的参数。
+$content_length #请求头中的Content-length字段。
+$content_type #请求头中的Content-Type字段。
+$document_root #当前请求在root指令中指定的值。
+$host #请求主机头字段，否则为服务器名称。
+$http_user_agent #客户端agent信息
+$http_cookie #客户端cookie信息
+$limit_rate #这个变量可以限制连接速率。
+$request_body_file #客户端请求主体信息的临时文件名。
+$request_method #客户端请求的动作，通常为GET或POST。
+$remote_addr #客户端的IP地址。
+$remote_port #客户端的端口。
+$remote_user #已经经过Auth Basic Module验证的用户名。
+$request_filename #当前请求的文件路径，由root或alias指令与URI请求生成。
+$query_string #与$args相同。
+$scheme #HTTP方法（如http，https）。
+$server_protocol #请求使用的协议，通常是HTTP/1.0或HTTP/1.1。
+$server_addr #服务器地址，在完成一次系统调用后可以确定这个值。
+$server_name #服务器名称。
+$server_port #请求到达服务器的端口号。
+$request_uri #包含请求参数的原始URI，不包含主机名，如：”/foo/bar.php?arg=baz”。
+$uri #不带请求参数的当前URI，$uri不包含主机名，如”/foo/bar.html”。
+$document_uri #与$uri相同。
+```
+Nginx在前端使用部分的基础配置就到这里了，虽然很多时候部署可能是运维专门在做，但是作为前端我认为还是有必要掌握相关的知识。
