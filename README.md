@@ -451,11 +451,11 @@ server {
     }
 }
 ```
-- `http://website.com/abcd`匹配 (完全匹配)
-- `http://website.com/ABCD`匹配 (大小写不敏感)
-- `http://website.com/abcd?param1&param2`匹配
-- `http://website.com/abcd/ `不匹配，不能匹配正则表达式
-- `http://website.com/abcde` 不匹配，不能匹配正则表达式
+- `http://web.com/anchnet`匹配 (完全匹配)
+- `http://web.com/ANCHNET`匹配 (大小写不敏感)
+- `http://web.com/anchnet?param1&param2`匹配
+- `http://web.com/anchnet/ `不匹配，不能匹配正则表达式
+- `http://web.com/anchnets` 不匹配，不能匹配正则表达式
 - 「^~」修饰符：前缀匹配 如果该 location 是最佳的匹配，那么对于匹配这个 location 的字符串， 该修饰符不再进行正则表达式检测。注意，这不是一个正则表达式匹配，它的目的是优先于正则表达式的匹配
 
 #### 查找的顺序及优先级
@@ -466,7 +466,8 @@ server {
 - 前缀匹配 ^~（立刻停止后续的正则搜索）
 - 按文件中顺序的正则匹配 ~或~*
 - 匹配不带任何修饰的前缀匹配。
-- 
+
+
 这个规则是这样的:
 
 - 先精确匹配，没有则查找带有 ^~的前缀匹配，没有则进行正则匹配，最后才返回前缀匹配的结果（如果有的话）
@@ -474,7 +475,73 @@ server {
 
 #### Nginx的rewrite模块
 
-rewrite模块即ngx_http_rewrite_module模块，主要功能是改写请求URI，是Nginx默认安装的模块。rewrite模块会根据PCRE正则匹配重写URI，然后发起内部跳转再匹配location，
+rewrite模块即ngx_http_rewrite_module模块，主要功能是改写请求URI，是Nginx默认安装的模块。rewrite模块会根据PCRE正则匹配重写URI，然后发起内部跳转再匹配location
+rewrite指令所执行的顺序如下：
+
+- 首先在server上下文中依照顺序执行rewrite模块指令；
+- 如果server中行了rewrite重写，那么以新URI发起内部跳转，直接匹配location，不会再执行server里的rewrite指令，然后
+     - 新URI直接匹配location
+     - 如果匹配上某个location，那么其中的rewrite模块指令同样依照顺序执行
+     - 如果再次导致URI的rewrite，那么再一次进行内部跳转去匹配location，但跳转的总次数不能超过10次
+
+### rewrite
+`基本语法： rewrite regex replacement [flag]`
+`上下文：server, location, if`
+
+regex是PCRE风格的，如果regex匹配URI，那么URI就会被替换成replacement，replacement 就是新的URI。如果rewrite同一个上下文中有多个这样的正则，匹配会依照rewrite指令出现的顺序先后依次进行下去，匹配到一个之后并不会终止，而是继续往下匹配，直到返回最后一个匹配上的为止。如果想要中止继续往下匹配，可以使用第三个参数flag。
+
+如果新URI字符中有关于协议的任何东西，比如`http://`或者`https://`等，进一步的处理就终止了
+
+- flag 参数值：
+     - last：如果有last参数，那么停止处理任何rewrite相关的指令，立即用替换后的新URI开始下一轮的location匹配
+     ```makefile
+     server {
+        listen 80;
+        server_name web.com;
+        location ^~ /anchnet {
+            rewrite ^/anchnet/(.*) /test/$1 last;
+            root /home/test;
+        }
+        location ^~ /test {
+            return 200 "hello world";
+        }
+    }
+     ```
+     `#curl -s http://web.com/anchnet/index.html -x 127.0.0.1:80. => http://web.com/test/index.html => hello world`
+     url由重写前的`http://web.com/anchnet/index.html`变为`http://web.com/test/index.html`，重新进行location匹配后，匹配到第二个location条件，所以请求url得到的响应是hello wold
+     ###  在配置rewrite last时，请求跳出当前location，进入server块，重新进行location匹配，超过10次匹配不到报500错误。客户端的url不变
+     
+     
+     - break: 停止处理任何rewrite的相关指令。如果出现在location里面，那么所有后面的rewrite模块指令都不会再执行，也不发起内部重定向，而是直接用新的URI进一步处理请求。
+     ```makefile
+     server {
+        listen 80;
+        server_name web.com
+        location ^~ /anchnet {
+            rewrite ^/anchnet/(.*) /test/$1 break;
+            root /home/test;
+        }
+        location ^~ /test {
+            return 200 "hello world";
+        }
+    }
+     ```
+     `#curl -s http://web.com/anchnet/index.html -x 127.0.0.1:80 => test`
+     `#curl -s http://web.com/test/index.html -x 127.0.0.1:80. => test`
+     url由重写前的`http://web.com/anchnet/index.html`变为`http://web.com/test/index.html`，nginx按照重写后的url进行资源匹配，匹配到的资源文件是/home/test/index.html，所以请求url得到的响应就是/home/test/index.html文件中的内容：test。 
+     ### 配置rewrite break时，请求不会跳出当前location，但资源匹配会按照重写后的url进行，如果location里面配置的是proxy_pass到后端，后端服务器收到的请求url也会是重写后的url。客户端的url不变。
+     
+     `last的break的相同点在于，立即停止执行所有当前上下文的rewrite模块指令；不同点在于last参数接着用新的URI马上搜寻新的location，而break不会搜寻新的location，直接用这个新的URI来处理请求，这样能避免重复rewite。因此，在server上下文中使用last，而在location上下文中使用break。`
+
+- rewrite在实际开发中的示例:
+```makefile
+    location /club {
+        rewrite /club(.*) $1 break; # $1表示路径中正则表达式匹配的第一个参数
+        proxy_pass http://stageclub.swapub.com;
+    }
+```
+`curl 43.253.23.21:8080/club/mongodb/version  #这里的/mongodb/version便是匹配到的$1`
+`result-> http://stageclub.swapub.com/mongodb/version`
 
 ####  适配PC与移动环境
 
