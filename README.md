@@ -403,7 +403,64 @@ location / {
 
 
 - `error_page`在一次请求中只能响应一次，对应的`Nginx`有另外一个配置可以控制这个选项：`recursive_error_pages`默认为false，作用是控制error_page能否在一次请求中触发多次。
+### 在这里特别注意一下关于proxy_pass处理代理时url末尾 带`/`与不带`/`的区别
+- proxy_pass配置中url末尾带/时，nginx转发时，会将原uri去除location匹配表达式后的内容拼接在proxy_pass中url之后。
+```makefile
+测试地址：http://192.168.171.129/test/tes.jsp
 
+场景一：
+location ^~ /test/ {
+    proxy_pass http://192.168.171.129:8080/server/;
+}
+代理后实际访问地址：http://192.168.171.129:8080/server/tes.jsp
+
+场景二：
+location ^~ /test {
+    proxy_pass http://192.168.171.129:8080/server/;
+}
+代理后实际访问地址：http://192.168.171.129:8080/server//tes.jsp
+
+场景三：
+location ^~ /test/ {
+    proxy_pass http://192.168.171.129:8080/;
+}
+代理后实际访问地址：http://192.168.171.129:8080/tes.jsp
+
+场景四：
+location ^~ /test {
+    proxy_pass http://192.168.171.129:8080/;
+}
+代理后实际访问地址：http://192.168.171.129:8080//tes.jsp
+```
+- proxy_pass配置中url末尾不带/时，如url中不包含path，则直接将原uri拼接在proxy_pass中url之后；如url中包含path，则将原uri去除location匹配表达式后的内容拼接在proxy_pass中的url之后
+
+
+```makefile
+测试地址：http://192.168.171.129/test/tes.jsp
+ 场景一：
+ location ^~ /test/{
+	proxy_pass http://192.168.171.129:8080/server;
+ }
+ 代理后实际访问地址：http://192.168.171.129:8080/servertes.jsp
+ 
+场景二：
+location ^~ /test {
+    proxy_pass http://192.168.171.129:8080/server;
+}
+代理后实际访问地址：http://192.168.171.129:8080/server/tes.jsp
+
+场景三：
+location ^~ /test/ {
+    proxy_pass http://192.168.171.129:8080;
+}
+代理后实际访问地址：http://192.168.171.129:8080/test/tes.jsp
+
+场景四：
+location ^~ /test {
+    proxy_pass http://192.168.171.129:8080;
+}
+代理后实际访问地址：http://192.168.171.129:8080/test/tes.jsp
+```
 #### 关于Nginx location匹配规则
 - Nginx 的 location 实现了对请求的细分处理，有些 URI 返回静态内容，有些分发到后端服务器等，在这里我们也做一个梳理:
 ```makefile
