@@ -409,6 +409,73 @@ location / {
 ```makefile
 location 支持的语法 location [=|~|~*|^~|@] pattern { ... }
 ```
+#### 「=」 修饰符：要求路径完全匹配
+```makefile
+server {
+    server_name web.com;
+    location = /anchnet {
+    […]
+    }
+}
+
+```
+- `http://web.com/anchnet`匹配
+- `http://web.com/ANCHNET`可能会匹配 ，也可以不匹配，取决于操作系统的文件系统是否大小写敏感（case-sensitive）。ps: Mac 默认是大小写不敏感的，git 使用会有大坑。
+- `http://web.com/anchnet?param1&param2`匹配，忽略 querystring
+- `http://web.com/anchnet/`不匹配，带有结尾的/
+- `http://web.com/anchnete`不匹配
+
+#### 「~」修饰符：区分大小写的正则匹配
+```makefile
+server {
+    server_name web.com;
+    location = /anchnet {
+    […]
+    }
+}
+
+
+```
+- `http://web.com/anchnet`匹配（完全匹配）
+- `http://web.com/ANCHNET`不匹配，大小写敏感
+- `http://web.com/anchnet?param1&param2`匹配
+- `http://web.com/anchnet/`不匹配，不能匹配正则表达式
+- `http://web.com/anchnete`不匹配,不能匹配正则表达式
+
+#### 「~*」不区分大小写的正则匹配
+```makefile
+server {
+    server_name web.com;
+    location ~* ^/anchnet$ {
+    […]
+    }
+}
+```
+- `http://website.com/abcd`匹配 (完全匹配)
+- `http://website.com/ABCD`匹配 (大小写不敏感)
+- `http://website.com/abcd?param1&param2`匹配
+- `http://website.com/abcd/ `不匹配，不能匹配正则表达式
+- `http://website.com/abcde` 不匹配，不能匹配正则表达式
+- 「^~」修饰符：前缀匹配 如果该 location 是最佳的匹配，那么对于匹配这个 location 的字符串， 该修饰符不再进行正则表达式检测。注意，这不是一个正则表达式匹配，它的目的是优先于正则表达式的匹配
+
+#### 查找的顺序及优先级
+
+当有多条 location 规则时，nginx 有一套比较复杂的规则，优先级如下：
+
+- 精确匹配 =
+- 前缀匹配 ^~（立刻停止后续的正则搜索）
+- 按文件中顺序的正则匹配 ~或~*
+- 匹配不带任何修饰的前缀匹配。
+- 
+这个规则是这样的:
+
+- 先精确匹配，没有则查找带有 ^~的前缀匹配，没有则进行正则匹配，最后才返回前缀匹配的结果（如果有的话）
+
+
+#### Nginx的rewrite模块
+
+rewrite模块即ngx_http_rewrite_module模块，主要功能是改写请求URI，是Nginx默认安装的模块。rewrite模块会根据PCRE正则匹配重写URI，然后发起内部跳转再匹配location，
+
 ####  适配PC与移动环境
 
 
