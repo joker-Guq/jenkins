@@ -479,7 +479,7 @@ rewrite模块即ngx_http_rewrite_module模块，主要功能是改写请求URI�
 rewrite指令所执行的顺序如下：
 
 - 首先在server上下文中依照顺序执行rewrite模块指令；
-- 如果server中行了rewrite重写，那么以新URI发起内部跳转，直接匹配location，不会再执行server里的rewrite指令，然后
+- 如果server中行了rewrite重写，那么以新URI发起内部跳转，直接匹配location，不会再执行server里的rewrite指令
      - 新URI直接匹配location
      - 如果匹配上某个location，那么其中的rewrite模块指令同样依照顺序执行
      - 如果再次导致URI的rewrite，那么再一次进行内部跳转去匹配location，但跳转的总次数不能超过10次
@@ -620,4 +620,3 @@ $request_uri #包含请求参数的原始URI，不包含主机名，如：”/fo
 $uri #不带请求参数的当前URI，$uri不包含主机名，如”/foo/bar.html”。
 $document_uri #与$uri相同。
 ```
-Nginx在前端使用部分的基础配置就到这里了，虽然很多时候部署可能是运维专门在做，但是作为前端我认为还是有必要掌握相关的知识。
