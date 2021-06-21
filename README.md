@@ -403,6 +403,12 @@ location / {
 
 
 - `error_page`在一次请求中只能响应一次，对应的`Nginx`有另外一个配置可以控制这个选项：`recursive_error_pages`默认为false，作用是控制error_page能否在一次请求中触发多次。
+
+#### 关于Nginx location匹配规则
+- Nginx 的 location 实现了对请求的细分处理，有些 URI 返回静态内容，有些分发到后端服务器等，在这里我们也做一个梳理:
+```makefile
+location 支持的语法 location [=|~|~*|^~|@] pattern { ... }
+```
 ####  适配PC与移动环境
 
 
@@ -455,10 +461,6 @@ location / {
 - 额外拓展一下关于 `Nginx`中几个关于uri的变量
 ```makefile
     在nginx中有几个关于uri的变量,包括$uri $request_uri $document_uri，下面看一下他们的区别 ：
-
-$request_uri: /stat.php?id=1585378&web_id=1585378
-$uri /stat.php
-$document_uri: /stat.php
 
 $args #这个变量等于请求行中的参数。
 $content_length #请求头中的Content-length字段。
