@@ -627,9 +627,9 @@ regex是PCRE风格的，如果regex匹配URI，那么URI就会被替换成replac
        listen              443 ssl; //监听443端口，因为443端口是https的默认端口。80为http的默认端口
        server_name         example.com;
        #证书文件
-       ssl_certificate     example.com.crt;
+       ssl_certificate     example.com.crt; #ssl证书的pem文件路径
        #私钥文件
-       ssl_certificate_key example.com.key;
+       ssl_certificate_key example.com.key; #ssl证书的key文件路径
     }
 ```
 
