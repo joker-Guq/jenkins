@@ -5,7 +5,7 @@
     所以我们需要先安装java的环境(这里的版本根据需求安装)：
     - wget安装：类似于windows系统里的网页下载
     - rpm安装：对已经下载的rpm包进行安装，类似于windows系统里.exe的安装
-    - yum安装：就像是Linux里面的一个软件，系统安装完成，这个软件也就安装完成了，使用yum命令会自动去/etc/yum.repo.d/XXX.repo 结尾的文件进行配置
+    - yum安装：是一个在Fedora和RedHat以及CentOS中的Shell前端软件包管理器。基于RPM包管理，能够从指定的服务器自动下载RPM包并且安装，可以自动处理依赖性关系，并且一次安装所有依赖的软件包，无须繁琐地一次次下载、安装
 ```sh
 yum install java-1.8.0-openjdk*
 ```
