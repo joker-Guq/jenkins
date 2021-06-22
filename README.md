@@ -681,3 +681,4 @@ $request_uri #包含请求参数的原始URI，不包含主机名，如：”/fo
 $uri #不带请求参数的当前URI，$uri不包含主机名，如”/foo/bar.html”。
 $document_uri #与$uri相同。
 ```
+![image](https://user-images.githubusercontent.com/50992676/122894800-1bc07280-d37a-11eb-8d72-ff0d54749f60.png)
