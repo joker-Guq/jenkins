@@ -490,7 +490,7 @@ server {
 ```makefile
 server {
     server_name web.com;
-    location = /anchnet {
+    location ~ /anchnet {
     […]
     }
 }
