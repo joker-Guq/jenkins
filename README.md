@@ -3,6 +3,9 @@
 # 1.安装部署jenkins
 *  这里我使用的是自己的linux服务器，我们以此为例进行安装, 由于jenkins基于java，
     所以我们需要先安装java的环境(这里的版本根据需求安装)：
+    - wget安装：类似于windows系统里的网页下载
+    - rpm安装：对已经下载的rpm包进行安装，类似于windows系统里.exe的安装
+    - yum安装：就像是Linux里面的一个软件，系统安装完成，这个软件也就安装完成了，使用yum命令会自动去/etc/yum.repo.d/XXX.repo 结尾的文件进行配置
 ```sh
 yum install java-1.8.0-openjdk*
 ```
