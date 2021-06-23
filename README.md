@@ -461,7 +461,7 @@ location ^~ /test {
 #### 关于Nginx location匹配规则
 - Nginx 的 location 实现了对请求的细分处理，有些 URI 返回静态内容，有些分发到后端服务器等，在这里我们也做一个梳理:
 ```makefile
-location 支持的语法 location [=|~|~*|^~|@] pattern { ... }
+location 支持的语法 location [=|~|~*|^~] pattern { ... }
 ```
 #### 「=」 修饰符：要求路径完全匹配
 ```makefile
@@ -561,7 +561,7 @@ regex是PCRE风格的，如果regex匹配URI，那么URI就会被替换成replac
         }
     }
      ```
-     `#curl -s http://web.com/anchnet/index.html -x 127.0.0.1:80. => http://web.com/test/index.html => hello world`
+     `#curl  http://web.com/anchnet/index.html => http://web.com/test/index.html => hello world`
      url由重写前的`http://web.com/anchnet/index.html`变为`http://web.com/test/index.html`，重新进行location匹配后，匹配到第二个location条件，所以请求url得到的响应是hello wold
      ###  在配置rewrite last时，请求跳出当前location，进入server块，重新进行location匹配，超过10次匹配不到报500错误。客户端的url不变
      
@@ -580,8 +580,8 @@ regex是PCRE风格的，如果regex匹配URI，那么URI就会被替换成replac
         }
     }
      ```
-     `#curl -s http://web.com/anchnet/index.html -x 127.0.0.1:80 => test`
-     `#curl -s http://web.com/test/index.html -x 127.0.0.1:80. => test`
+     `#curl -s http://web.com/anchnet/index.html  => test`
+     `#curl -s http://web.com/test/index.html  => test`
      url由重写前的`http://web.com/anchnet/index.html`变为`http://web.com/test/index.html`，nginx按照重写后的url进行资源匹配，匹配到的资源文件是/home/test/index.html，所以请求url得到的响应就是/home/test/index.html文件中的内容：test。 
      ### 配置rewrite break时，请求不会跳出当前location，但资源匹配会按照重写后的url进行，如果location里面配置的是proxy_pass到后端，后端服务器收到的请求url也会是重写后的url。客户端的url不变。
      
