@@ -313,18 +313,13 @@ nginx的核心配置文件nginx.conf主要由3个部分组成:
 worker_processes  1;            #配置工作进程数目,根据硬件调整，通常等于CPU数量或者2倍于CPU数量
 
 #error_log  logs/error.log;     # 配置全局错误日志及类型
-#error_log  logs/error.log  notice;
-#error_log  logs/error.log  info;
 
-#pid        logs/nginx.pid;     #配置进程pid文件
 ```
 
 #### events配置
 
 ```makefile
     events {
-
-        # use epoll;  #事件处理模型优化
 
         worker_connections  1024;  #配置每个worker进程连接数上限，nginx支持的总连接数等于worker_connections*worker_processes
    }
@@ -339,7 +334,7 @@ http {
     client_max_body_size 100m;
 
     sendfile        on;    #开启高效文件传输模式
-    #cp_nopush     on;  #防止网络阻塞
+    #tcp_nopush     on;  #防止网络阻塞
 
     keepalive_timeout  0;
     
@@ -348,8 +343,6 @@ http {
     gzip_comp_level 6; //压缩级别，1-10，数字越大压缩的越好
     gzip_min_length 100; //不压缩临界值，大于100的才压缩，一般不用改
     gzip_types application/javascript text/css text/xml;
-    gzip_disable "MSIE [1-6]\."; // IE6对Gzip不友好，对Gzip
-    gzip_vary on;
   }
 ```
 - `client_max_body_size`表示 客户端请求服务器最大允许大小,如果请求正文数据大于设定值，HTTP协议会报413错误 `Request Entity Too Large`，如果需要上传大文件是需要修改这个值的。
